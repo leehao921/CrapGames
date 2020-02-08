@@ -15,18 +15,9 @@ void check_list(){
 printf("start reading file.\n");
 printf("file : \n");
 read_file  = fopen("score_board.txt","r");
-/*
-do
-{
-fscanf(read_file,"%[^\n]*c",buff);
-printf("%s \n",buff);
-}
-while(buff!=EOF);
-*/
 
-for(int i=0;i<3;i++){
-fscanf(read_file,"%[^\n]*c",buff);
-printf("%s \n",buff);
+while(fscanf(read_file, "%60[^\n]\n", buff) != EOF){
+	printf("> %s\n", buff);
 }
 
 /*if(buff=="\n")
@@ -41,7 +32,8 @@ fclose(read_file);
 void creat_list(){
 
 write_file = fopen("score_board.txt","w");
-for(int i=0;i<2;i++){
+int i;
+for(i=0;i<2;i++){
 printf("plz input your name p%d: ",i+1);
 scanf("%s",name);
 printf("enter your scores: ");
