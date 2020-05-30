@@ -1,4 +1,0 @@
-Play 01 : Name: lee                  || Score: 12411 
-Play 02 : Name: hao                  || Score: 91234 
-Play 03 : Name: hehe                 || Score: 41324 
-
