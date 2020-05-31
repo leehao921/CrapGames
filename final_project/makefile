@@ -2,9 +2,10 @@ ALLEGRO_LIBRARIES := allegro-5 allegro_image-5 allegro_font-5 allegro_ttf-5 alle
 ALLEGRO_FLAGS := $(shell pkg-config --cflags --libs $(ALLEGRO_LIBRARIES)) -lallegro -lallegro_main
 CC := gcc
 OUT:= exec.out
+OBJECTS:= main.c begin.c initial.c
+INCLUDE:=begin.h initial.h
 MAIN:= main.c 
-LINK: begin.c initial.c link.h
 	
 
-all: $(MAIN)
-	$(CC) $(MAIN) initial.c begin.c $(ALLFLAGS) -o $(OUT) 
+all:  $(MAIN)
+	$(CC) -o $(OUT) $(ALLFLAGS) $(OBJECTS) -I 

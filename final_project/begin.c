@@ -1,14 +1,6 @@
-#include <stdio.h>
-#include <allegro5/allegro.h>
-#include <allegro5/allegro_primitives.h>
-#include <allegro5/allegro_image.h>
-#include <allegro5/allegro_audio.h>
-#include <allegro5/allegro_acodec.h>
-#include <allegro5/allegro_font.h>
-#include <allegro5/allegro_ttf.h>
-#include"link.h"
+#include"begin.h"
 
-void game_begin()
+void game_begin(void)
 { 
     back_ground_music=al_load_sample("bgm.wav");
     if(!back_ground_music)
