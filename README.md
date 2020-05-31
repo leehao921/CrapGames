@@ -1,6 +1,7 @@
 2020 程式設計一的final project  
-    # RPG Game!!! # 
-** ## proposal: ## **
+# RPG Game!!!  
+    
+**## proposal:**
 
 偏向打怪類的ARPG遊戲. 
 主視覺&&主題：  
