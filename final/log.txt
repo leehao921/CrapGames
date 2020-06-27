@@ -1,0 +1,6 @@
+There are total 0 supported mouse buttons
+Allegro5 initialized
+Game begin
+loaded font:  with size 33872
+loaded font:  with size 33445
+Start scene created
