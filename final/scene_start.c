@@ -5,21 +5,17 @@
 #include "game.h"
 #include "utility.h"
 #include <math.h>
-
-// Variables and functions with 'static' prefix at the top level of a
-// source file is only accessible in that file ("file scope", also
-// known as "internal linkage"). If other files has the same variable
-// name, they'll be different variables.
-
-/* Define your static vars / function prototypes below. */
-
-// TODO: More variables and functions that will only be accessed
-// inside this scene. They should all have the 'static' prefix.
+#define MAX_ENEMY 5
+#define MAX_BULLET 100
+#define Tank_SIZE 64
 
 static ALLEGRO_BITMAP *img_background;
-static ALLEGRO_BITMAP *img_plane;
 static ALLEGRO_BITMAP *img_enemy;
-static ALLEGRO_BITMAP *img_bullet;
+static ALLEGRO_BITMAP *img_bullet_dw;
+static ALLEGRO_BITMAP *img_bullet_up;
+static ALLEGRO_BITMAP *img_bullet_l;
+static ALLEGRO_BITMAP *img_bullet_r;
+static ALLEGRO_BITMAP *img_tank;
 
 typedef struct
 {
@@ -35,36 +31,52 @@ typedef struct
 	ALLEGRO_BITMAP *img;
 } MovableObject;
 
+typedef struct
+{
+	int hp;
+	int MAX_HP;
+	int EXP;
+	int Level;
+	int Head_x;
+	int Head_y;
+	bool death;
+} status;
+
+status _hero;
+status _enemies[MAX_ENEMY];
+
 static void init(void);
 static void update(void);
 static void draw_movable_object(MovableObject obj);
 static void draw(void);
 static void destroy(void);
 
-#define MAX_ENEMY 3
-#define MAX_BULLET 999
-static MovableObject plane;
+static MovableObject tank;
 static MovableObject enemies[MAX_ENEMY];
-static MovableObject bullets[MAX_BULLET];
-// [HACKATHON 2-4]
-// TODO: Set up bullet shooting cool-down variables.
-// 1) Declare your shooting cool-down time as constant. (0.2f will be nice)
-// 2) Declare your last shoot timestamp.
+static MovableObject up_bullets[MAX_BULLET];
+static MovableObject dw_bullets[MAX_BULLET];
+static MovableObject l_bullets[MAX_BULLET];
+static MovableObject r_bullets[MAX_BULLET];
+
 const float MAX_COOLDOWN = 0.25;
 double last_shoot_timestamp;
 static ALLEGRO_SAMPLE *bgm;
 static ALLEGRO_SAMPLE_ID bgm_id;
+static ALLEGRO_SAMPLE *att_bgm;
+static ALLEGRO_SAMPLE_ID att_bgm_id;
 static bool draw_gizmos;
+
+int DIRECT;
 
 static void init(void)
 {
 	int i;
 	img_background = load_bitmap_resized("source/start-bg.jpg", SCREEN_W, SCREEN_H);
-	img_plane = plane.img = load_bitmap("source/plane.png");
-	plane.x = SCREEN_W / 2;
-	plane.y = SCREEN_H - SCREEN_H / 3;
-	plane.w = al_get_bitmap_width(plane.img);
-	plane.h = al_get_bitmap_height(plane.img);
+	img_tank = tank.img = load_bitmap("source/tank.png");
+	tank.x = SCREEN_W / 2;
+	tank.y = SCREEN_H - SCREEN_H / 3;
+	tank.w = Tank_SIZE;
+	tank.h = Tank_SIZE;
 	img_enemy = load_bitmap("source/smallfighter0006.png");
 	for (i = 0; i < MAX_ENEMY; i++)
 	{
@@ -74,94 +86,206 @@ static void init(void)
 		enemies[i].x = enemies[i].w / 2 + (float)rand() / RAND_MAX * (SCREEN_W - enemies[i].w);
 		enemies[i].y = 80;
 	}
-	// [HACKATHON 2-5]
-	// TODO: Initialize bullets.
-	// 1) Search for a bullet image online and put it in your project.
-	//    You can use the image we provided.
-	// 2) Load it in by 'load_bitmap' or 'load_bitmap_resized'.
-	// 3) For each bullets in array, set their w and h to the size of
-	//    the image, and set their img to bullet image, hidden to true,
-	//    (vx, vy) to (0, -3).
-	// Uncomment and fill in the code below.
-	img_bullet = al_load_bitmap("source/image12.png");
+
+	img_bullet_dw = al_load_bitmap("source/bullets_dw.png");
+	img_bullet_l = al_load_bitmap("source/bullets_l.png");
+	img_bullet_r = al_load_bitmap("source/bullets_r.png");
+	img_bullet_up = al_load_bitmap("source/bullets_up.png");
 	for (int i = 0; i < MAX_BULLET; i++)
 	{
-		bullets[i].img = img_bullet;
-		bullets[i].w = al_get_bitmap_width(img_bullet);
-		bullets[i].h = al_get_bitmap_height(img_bullet);
-		bullets[i].vx = 0;
-		bullets[i].vy = -3;
-		bullets[i].hidden = true;
+		up_bullets[i].img = img_bullet_up;
+		up_bullets[i].w = al_get_bitmap_width(img_bullet_up);
+		up_bullets[i].h = al_get_bitmap_height(img_bullet_up);
+		up_bullets[i].vx = 0;
+		up_bullets[i].vy = -3;
+		up_bullets[i].hidden = true;
 	}
+	for (int i = 0; i < MAX_BULLET; i++)
+	{
+		dw_bullets[i].img = img_bullet_dw;
+		dw_bullets[i].w = al_get_bitmap_width(img_bullet_dw);
+		dw_bullets[i].h = al_get_bitmap_height(img_bullet_dw);
+		dw_bullets[i].vx = 0;
+		dw_bullets[i].vy = 3;
+		dw_bullets[i].hidden = true;
+	}
+	for (int i = 0; i < MAX_BULLET; i++)
+	{
+		l_bullets[i].img = img_bullet_l;
+		l_bullets[i].w = al_get_bitmap_width(img_bullet_l);
+		l_bullets[i].h = al_get_bitmap_height(img_bullet_l);
+		l_bullets[i].vx = -3;
+		l_bullets[i].vy = 0;
+		l_bullets[i].hidden = true;
+	}
+	for (int i = 0; i < MAX_BULLET; i++)
+	{
+		r_bullets[i].img = img_bullet_r;
+		r_bullets[i].w = al_get_bitmap_width(img_bullet_r);
+		r_bullets[i].h = al_get_bitmap_height(img_bullet_r);
+		r_bullets[i].vx = 3;
+		r_bullets[i].vy = 0;
+		r_bullets[i].hidden = true;
+	}
+	att_bgm = al_load_sample("source/laser.ogg");
 	// Can be moved to shared_init to decrease loading time.
-	bgm = load_audio("source/mythica.ogg");
+	bgm = load_audio("source/epic_bgm.wav");
 	game_log("Start scene initialized");
 	bgm_id = play_bgm(bgm, 1);
 }
 
 static void update(void)
 {
-	plane.vx = plane.vy = 0;
+	tank.vx = tank.vy = 0;
 	if (key_state[ALLEGRO_KEY_UP] || key_state[ALLEGRO_KEY_W])
-		plane.vy -= 2;
+	{
+		tank.vy -= 2;
+		DIRECT = 192;
+		_hero.Head_y = 1;
+		_hero.Head_x = 0;
+	}
 	if (key_state[ALLEGRO_KEY_DOWN] || key_state[ALLEGRO_KEY_S])
-		plane.vy += 2;
+	{
+		tank.vy += 2;
+		DIRECT = 0;
+		_hero.Head_y = -1;
+		_hero.Head_x = 0;
+	}
 	if (key_state[ALLEGRO_KEY_LEFT] || key_state[ALLEGRO_KEY_A])
-		plane.vx -= 2;
+	{
+		tank.vx -= 2;
+		DIRECT = 64;
+		_hero.Head_x = -1;
+		_hero.Head_y = 0;
+	}
 	if (key_state[ALLEGRO_KEY_RIGHT] || key_state[ALLEGRO_KEY_D])
-		plane.vx += 2;
+	{
+		tank.vx += 2;
+		DIRECT = 128;
+		_hero.Head_x = 1;
+		_hero.Head_y = 0;
+	}
 	// 0.71 is (1/sqrt(2)).
-	plane.y += plane.vy * 4 * (plane.vx ? 0.71f : 1);
-	plane.x += plane.vx * 4 * (plane.vy ? 0.71f : 1);
+	tank.y += tank.vy * 4 * (tank.vx ? 0.71f : 1);
+	tank.x += tank.vx * 4 * (tank.vy ? 0.71f : 1);
 	//       (x, y axes can be separated.)
-	if ((plane.x - plane.w / 2) == 0)
-		plane.x = plane.x + plane.w;
-	else if ((plane.x + plane.w / 2) == SCREEN_W)
-		plane.x = plane.x - plane.w;
-	if ((plane.y - plane.h / 2) == 0)
-		plane.y = plane.y + plane.h / 2;
-	else if ((plane.y + plane.h / 2) == SCREEN_H)
-		plane.y = plane.y - plane.h / 2;
+	if ((tank.x - tank.w / 2) == 0)
+		tank.x = tank.x + tank.w;
+	else if ((tank.x + tank.w / 2) == SCREEN_W)
+		tank.x = tank.x - tank.w;
+	if ((tank.y - tank.h / 2) == 0)
+		tank.y = tank.y + tank.h / 2;
+	else if ((tank.y + tank.h / 2) == SCREEN_H)
+		tank.y = tank.y - tank.h / 2;
+	//hero_bullet
 	int i;
 	for (i = 0; i < MAX_BULLET; i++)
 	{
-		if (bullets[i].hidden == false)
+		if (up_bullets[i].hidden == false)
 		{
-			bullets[i].x += bullets[i].vx;
-			bullets[i].y += bullets[i].vy;
+			up_bullets[i].x += up_bullets[i].vx;
+			up_bullets[i].y += up_bullets[i].vy;
 		}
-		if (bullets[i].y < 0)
-			bullets[i].hidden = true;
+		if (up_bullets[i].y < 0)
+			up_bullets[i].hidden = true;
 	}
-
-	// [HACKATHON 2-7]
-	// TODO: Shoot if key is down and cool-down is over.
-	// 1) Get the time now using 'al_get_time'.
-	// 2) If Space key is down in 'key_state' and the time
-	//    between now and last shoot is not less that cool
-	//    down time.
-	// 3) Loop through the bullet array and find one that is hidden.
-	//    (This part can be optimized.)
-	// 4) The bullet will be found if your array is large enough.
-	// 5) Set the last shoot time to now.
-	// 6) Set hidden to false (recycle the bullet) and set its x, y to the
-	//    front part of your plane.
-	// Uncomment and fill in the code below.
+	for (i = 0; i < MAX_BULLET; i++)
+	{
+		if (dw_bullets[i].hidden == false)
+		{
+			dw_bullets[i].x += dw_bullets[i].vx;
+			dw_bullets[i].y += dw_bullets[i].vy;
+		}
+		if (dw_bullets[i].y < 0)
+			dw_bullets[i].hidden = true;
+	}
+	for (i = 0; i < MAX_BULLET; i++)
+	{
+		if (l_bullets[i].hidden == false)
+		{
+			l_bullets[i].x += l_bullets[i].vx;
+			l_bullets[i].y += l_bullets[i].vy;
+		}
+		if (l_bullets[i].y < 0)
+			l_bullets[i].hidden = true;
+	}
+	for (i = 0; i < MAX_BULLET; i++)
+	{
+		if (r_bullets[i].hidden == false)
+		{
+			r_bullets[i].x += r_bullets[i].vx;
+			r_bullets[i].y += r_bullets[i].vy;
+		}
+		if (r_bullets[i].y < 0)
+			r_bullets[i].hidden = true;
+	}
+	//hero_attaking
 	double now = al_get_time();
-	if (key_state[ALLEGRO_KEY_SPACE] && now - last_shoot_timestamp >= MAX_COOLDOWN)
+	if (_hero.Head_y > 0 && !_hero.Head_x && key_state[ALLEGRO_KEY_SPACE] && now - last_shoot_timestamp >= MAX_COOLDOWN)
 	{
 		for (i = 0; i < MAX_BULLET; i++)
 		{
-			if (bullets[i].hidden == true)
+			if (up_bullets[i].hidden == true)
 				break;
 		}
 		if (i < MAX_BULLET)
 		{
 			last_shoot_timestamp = now;
-			//al_play_sample(laser_bgm,5.0,1.0,1.0,ALLEGRO_PLAYMODE_ONCE,&laser_bgm_id);
-			bullets[i].hidden = false;
-			bullets[i].x = plane.x;
-			bullets[i].y = plane.y - plane.h / 2;
+			al_play_sample(att_bgm, 5.0, 1.0, 1.0, ALLEGRO_PLAYMODE_ONCE, &att_bgm_id);
+			up_bullets[i].hidden = false;
+			up_bullets[i].x = tank.x + tank.w / 2;
+			up_bullets[i].y = tank.y - tank.h / 3;
+		}
+	}
+
+	if (_hero.Head_y < 0 && !_hero.Head_x && key_state[ALLEGRO_KEY_SPACE] && now - last_shoot_timestamp >= MAX_COOLDOWN)
+	{
+		for (i = 0; i < MAX_BULLET; i++)
+		{
+			if (dw_bullets[i].hidden == true)
+				break;
+		}
+		if (i < MAX_BULLET)
+		{
+			last_shoot_timestamp = now;
+			al_play_sample(att_bgm, 5.0, 1.0, 1.0, ALLEGRO_PLAYMODE_ONCE, &att_bgm_id);
+			dw_bullets[i].hidden = false;
+			dw_bullets[i].x = tank.x + tank.w / 2;
+			dw_bullets[i].y = tank.y + tank.h / 3;
+		}
+	}
+
+	if (!_hero.Head_y && _hero.Head_x > 0 && key_state[ALLEGRO_KEY_SPACE] && now - last_shoot_timestamp >= MAX_COOLDOWN)
+	{
+		for (i = 0; i < MAX_BULLET; i++)
+		{
+			if (r_bullets[i].hidden == true)
+				break;
+		}
+		if (i < MAX_BULLET)
+		{
+			last_shoot_timestamp = now;
+			al_play_sample(att_bgm, 5.0, 1.0, 1.0, ALLEGRO_PLAYMODE_ONCE, &att_bgm_id);
+			r_bullets[i].hidden = false;
+			r_bullets[i].x = tank.x + tank.w / 3;
+			r_bullets[i].y = tank.y;
+		}
+	}
+
+	if (!_hero.Head_y && _hero.Head_x < 0 && key_state[ALLEGRO_KEY_SPACE] && now - last_shoot_timestamp >= MAX_COOLDOWN)
+	{
+		for (i = 0; i < MAX_BULLET; i++)
+		{
+			if (l_bullets[i].hidden == true)
+				break;
+		}
+		if (i < MAX_BULLET)
+		{
+			last_shoot_timestamp = now;
+			al_play_sample(att_bgm, 5.0, 1.0, 1.0, ALLEGRO_PLAYMODE_ONCE, &att_bgm_id);
+			l_bullets[i].hidden = false;
+			l_bullets[i].x = tank.x + tank.w / 5;
+			l_bullets[i].y = tank.y;
 		}
 	}
 }
@@ -182,23 +306,39 @@ static void draw(void)
 {
 	int i;
 	al_draw_bitmap(img_background, 0, 0, 0);
-	// [HACKATHON 2-8]
-	// TODO: Draw all bullets in your bullet array.
-	// Uncomment and fill in the code below.
-	//for (???)
-	//	???(???);
-	draw_movable_object(plane);
+	al_draw_bitmap_region(img_tank, 0, DIRECT, Tank_SIZE, Tank_SIZE, tank.x, tank.y, 0);
+
+	//l_draw_bitmap_region(img_tank, 0, 0, Tank_SIZE, Tank_SIZE, tank.x, tank.y, 0);
+	for (i = 0; i < MAX_BULLET; i++)
+		draw_movable_object(up_bullets[i]);
+	for (i = 0; i < MAX_BULLET; i++)
+		draw_movable_object(dw_bullets[i]);
+	for (i = 0; i < MAX_BULLET; i++)
+		draw_movable_object(l_bullets[i]);
+	for (i = 0; i < MAX_BULLET; i++)
+		draw_movable_object(r_bullets[i]);
+
 	for (i = 0; i < MAX_ENEMY; i++)
+	{
+
 		draw_movable_object(enemies[i]);
+		if (!enemies[i].hidden)
+		{
+			al_draw_filled_rectangle(enemies[i].x - 1.5 * enemies[i].w / 2, enemies[i].y + enemies[i].h + 25, enemies[i].x + 1.5 * enemies[i].w / 2, enemies[i].y + enemies[i].h + 35, al_map_rgb(255, 0, 0));
+			al_draw_filled_rectangle(enemies[i].x - 1.5 * enemies[i].w / 2, enemies[i].y + enemies[i].h + 25, enemies[i].x + 1.5 * enemies[i].w / 2 - (enemies[i].w - enemies[i].w * _enemies[i].hp / _enemies[i].MAX_HP), enemies[i].y + enemies[i].h + 35, al_map_rgb(0, 224, 208));
+		}
+	}
 }
 
 static void destroy(void)
 {
 	al_destroy_bitmap(img_background);
-	al_destroy_bitmap(img_plane);
 	al_destroy_bitmap(img_enemy);
 	al_destroy_sample(bgm);
-	al_destroy_bitmap(img_bullet);
+	al_destroy_bitmap(img_bullet_dw);
+	al_destroy_bitmap(img_bullet_up);
+	al_destroy_bitmap(img_bullet_l);
+	al_destroy_bitmap(img_bullet_r);
 	stop_bgm(bgm_id);
 	game_log("Start scene destroyed");
 }
@@ -209,13 +349,6 @@ static void on_key_down(int keycode)
 		draw_gizmos = !draw_gizmos;
 }
 
-// TODO: Add more event callback functions such as keyboard, mouse, ...
-
-// Functions without 'static', 'extern' prefixes is just a normal
-// function, they can be accessed by other files using 'extern'.
-// Define your normal function prototypes below.
-
-// The only function that is shared across files.
 Scene scene_start_create(void)
 {
 	Scene scene;

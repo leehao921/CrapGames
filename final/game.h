@@ -27,7 +27,6 @@ typedef void (*func_ptr_keyboard)(int keycode);
 typedef void (*func_ptr_mouse)(int btn, int x, int y, int dz);
 // TODO: More function pointer typedefs for other events.
 
-// Structure containing all scene functions / event callbacks.
 typedef struct
 {
 	char *name;
@@ -41,7 +40,6 @@ typedef struct
 	func_ptr_mouse on_mouse_move;
 	func_ptr_mouse on_mouse_up;
 	func_ptr_mouse on_mouse_scroll;
-	// TODO: More event callbacks such as timer tick, video finished, ...
 } Scene;
 
 // Frame rate (frame per second)

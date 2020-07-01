@@ -3,8 +3,8 @@ ALLEGRO_FLAGS := $(shell pkg-config --cflags --libs $(ALLEGRO_LIBRARIES)) -lalle
 
 CC := gcc
 OUT:= exec.out
-OBJECTS:= main.c game.c scene_menu.c scene_start.c shared.c utility.c
-INCLUDE:= game.h scene_menu.h scene_start.h shared.h utility.h
+OBJECTS:= main.c game.c scene_menu.c scene_start.c shared.c utility.c scene_settings.c
+INCLUDE:= game.h scene_menu.h scene_start.h shared.h utility.h scene_settings.h
 MAIN:= main.c 
 	
 
