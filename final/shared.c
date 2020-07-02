@@ -12,7 +12,7 @@ ALLEGRO_FONT *font_pirulen_24;
 
 void shared_init(void)
 {
-	font_pirulen_32 = load_font("source/pirulen.ttf", 32);
+	font_pirulen_32 = load_font("source/pirulen.ttf", 64);
 	font_pirulen_24 = load_font("source/pirulen.ttf", 24);
 	game_change_scene(scene_menu_create());
 }

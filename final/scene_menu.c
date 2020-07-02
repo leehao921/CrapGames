@@ -9,7 +9,7 @@
 #include "scene_start.h"
 #include "scene_settings.h"
 
-static const char *txt_title = "RPG";
+static const char *txt_title = "LAST SURVIVoR";
 static const char *txt_info = "Press enter key to start";
 static ALLEGRO_BITMAP *img_background;
 static ALLEGRO_BITMAP *img_settings;
